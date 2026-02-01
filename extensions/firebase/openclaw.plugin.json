@@ -1,0 +1,9 @@
+{
+  "id": "firebase",
+  "channels": ["firebase"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

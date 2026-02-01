@@ -29,12 +29,12 @@ Create a custom OpenClaw channel plugin that integrates with the Grio platform v
 This plugin runs on untrusted VMs. It must NOT have any Firebase credentials or direct database access. All data flows through HTTP APIs.
 
 ## Current State
-- [ ] Plugin structure created
-- [ ] HTTP trigger endpoint (receives from App Server)
-- [ ] HTTP response client (sends to App Server)
-- [ ] LLM Proxy client (streaming)
-- [ ] Billing error handling
-- [ ] Integration with OpenClaw
+- [x] Plugin structure created
+- [x] HTTP trigger endpoint (receives from App Server)
+- [x] HTTP response client (sends to App Server)
+- [x] LLM Proxy client (streaming)
+- [x] Billing error handling
+- [x] Integration with OpenClaw
 
 ## Prerequisites
 - Understanding of OpenClaw channel plugin architecture
@@ -402,13 +402,13 @@ console.log('Mock LLM Proxy on :3001');
 
 ## Verification Checklist
 
-- [ ] Plugin builds without errors
-- [ ] HTTP trigger validates secret correctly
-- [ ] Plugin calls LLM Proxy with streaming
-- [ ] Plugin parses SSE stream correctly
-- [ ] Plugin sends response back to App Server
-- [ ] Billing errors are handled (402 → purchase_credits action)
-- [ ] General errors return friendly message
+- [x] Plugin builds without errors
+- [x] HTTP trigger validates secret correctly
+- [x] Plugin calls LLM Proxy with streaming
+- [x] Plugin parses SSE stream correctly
+- [x] Plugin sends response back to App Server
+- [x] Billing errors are handled (402 → purchase_credits action)
+- [x] General errors return friendly message
 
 ## Testing
 

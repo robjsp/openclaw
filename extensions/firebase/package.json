@@ -1,0 +1,38 @@
+{
+  "name": "@openclaw/firebase",
+  "version": "0.0.1",
+  "description": "OpenClaw Firebase channel plugin for Grio platform",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "bun test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "openclaw": "workspace:*",
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.0"
+  },
+  "peerDependencies": {
+    "openclaw": "*"
+  },
+  "openclaw": {
+    "extensions": ["./index.ts"],
+    "channel": {
+      "id": "firebase",
+      "label": "Firebase",
+      "selectionLabel": "Firebase (Grio)",
+      "docsPath": "/channels/firebase",
+      "docsLabel": "firebase",
+      "blurb": "Grio Firebase messaging channel",
+      "aliases": []
+    },
+    "install": {
+      "npmSpec": "@openclaw/firebase",
+      "localPath": "extensions/firebase",
+      "defaultChoice": "local"
+    }
+  }
+}
