@@ -117,7 +117,7 @@ async function processMessage(request: VmTriggerRequest): Promise<void> {
 
   // Send response back to App Server
   await sendResponse(messageId, result.content, {
-    model: "claude-sonnet-4-20250514",
+    model: "claude-haiku-4-5-20251001",
     tokens: result.usage?.outputTokens,
   });
 }
