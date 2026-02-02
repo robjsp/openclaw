@@ -6,6 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "build:standalone": "tsc -p tsconfig.standalone.json",
     "dev": "tsc --watch",
     "test": "bun test"
   },

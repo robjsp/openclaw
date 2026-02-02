@@ -1,0 +1,65 @@
+# Grio OpenClaw - Per-user VM Docker Image
+#
+# Based on the official OpenClaw Dockerfile, customized for Grio.
+# Each user gets their own isolated VM running this image.
+#
+# Environment variables (set via Fly.io secrets):
+#   LLM_PROXY_URL      - URL of the LLM proxy server
+#   LLM_PROXY_API_KEY  - Per-VM proxy token for authentication
+#   APP_SERVER_URL     - URL of the app server
+#   VM_INTERNAL_SECRET - Per-VM secret for app server auth
+
+FROM node:22-bookworm
+
+# Install Bun (required for build scripts)
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:${PATH}"
+
+RUN corepack enable
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Copy package files first for better caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY .npmrc* ./
+COPY ui/package.json ./ui/package.json
+COPY patches ./patches
+COPY scripts ./scripts
+
+# Install dependencies
+RUN pnpm install --no-frozen-lockfile
+
+# Copy everything else
+COPY . .
+
+# Build the Firebase plugin (standalone mode only - no OpenClaw plugin-sdk dependency)
+WORKDIR /app/extensions/firebase
+RUN pnpm build:standalone
+
+# Back to app root
+WORKDIR /app
+
+# Production environment
+ENV NODE_ENV=production
+ENV PORT=8080
+
+# Security: Run as non-root user
+USER node
+
+# Expose HTTP trigger port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Start the Firebase plugin standalone server
+CMD ["node", "extensions/firebase/dist/standalone.js"]

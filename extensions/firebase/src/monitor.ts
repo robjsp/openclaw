@@ -132,6 +132,12 @@ export async function handleFirebaseWebhookRequest(
 ): Promise<boolean> {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
+  // Health check endpoint (works in both standalone and gateway mode)
+  if (req.method === "GET" && url.pathname === "/health") {
+    sendJsonResponse(res, 200, { status: "ok", plugin: "firebase" });
+    return true;
+  }
+
   // Only handle POST /api/message
   if (req.method !== "POST" || url.pathname !== "/api/message") {
     return false;

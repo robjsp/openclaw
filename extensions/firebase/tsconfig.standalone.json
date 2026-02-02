@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["DOM", "DOM.Iterable", "ES2023", "ScriptHost"],
+    "declaration": false,
+    "outDir": "dist",
+    "rootDir": ".",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "es2023"
+  },
+  "include": [
+    "standalone.ts",
+    "src/monitor.ts",
+    "src/llm-client.ts",
+    "src/respond.ts",
+    "src/types.ts"
+  ],
+  "exclude": ["node_modules", "dist", "test"]
+}
