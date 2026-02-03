@@ -1,6 +1,10 @@
 /**
  * LLM Proxy client for streaming requests.
  * Handles SSE parsing for both Anthropic and OpenAI response formats.
+ * 
+ * @deprecated This file is deprecated and no longer used by the Firebase plugin.
+ * The plugin now routes through OpenClaw's agent system which handles LLM calls.
+ * This file is kept temporarily for reference but will be removed in a future version.
  */
 
 import { isBillingError } from "./respond.js";

@@ -16,6 +16,8 @@ export interface VmTriggerRequest {
   messageId: string;
   /** User's message text */
   text: string;
+  /** User ID for session management and conversation context */
+  uid?: string;
   /** Optional conversation history for context */
   conversationHistory?: Array<{
     role: "user" | "assistant";

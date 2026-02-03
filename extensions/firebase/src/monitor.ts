@@ -1,16 +1,21 @@
 /**
  * HTTP webhook handler for receiving messages from the App Server.
  * This is the inbound leg of the App Server <-> VM communication.
+ * 
+ * Messages are routed through OpenClaw's agent system for proper
+ * conversation management, memory, and tool access.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { VmTriggerRequest, VmTriggerResponse } from "./types.js";
-import { callLlmProxy } from "./llm-client.js";
+import type { ReplyPayload } from "openclaw/plugin-sdk";
 import {
   sendResponse,
   sendBillingErrorResponse,
   sendErrorResponse,
+  isBillingError,
 } from "./respond.js";
+import { getFirebaseRuntime, hasFirebaseRuntime } from "./runtime.js";
 
 const VM_INTERNAL_SECRET = process.env.VM_INTERNAL_SECRET;
 const MAX_PAYLOAD_BYTES = 1024 * 1024; // 1MB
@@ -84,42 +89,125 @@ function sendJsonResponse(
 
 /**
  * Process an incoming message from the App Server.
+ * Routes through OpenClaw's agent system using the dispatcher pattern.
  * Called asynchronously after acknowledging receipt.
  */
 async function processMessage(request: VmTriggerRequest): Promise<void> {
-  const { messageId, text, conversationHistory } = request;
+  const { messageId, text, uid, conversationHistory } = request;
 
-  console.log(`[Firebase] Processing message ${messageId}: "${text}"`);
+  console.log(`[Firebase] Processing message ${messageId} from user ${uid || "unknown"}: "${text}"`);
+  
+  if (conversationHistory && conversationHistory.length > 0) {
+    console.log(`[Firebase] Received ${conversationHistory.length} previous messages for context`);
+  }
 
-  // Build messages array for LLM
-  const messages = [
-    ...(conversationHistory || []),
-    { role: "user" as const, content: text },
-  ];
+  // Check if runtime is available
+  if (!hasFirebaseRuntime()) {
+    console.error(`[Firebase] Runtime not initialized - cannot process message ${messageId}`);
+    await sendErrorResponse(
+      messageId,
+      "Service temporarily unavailable. Please try again."
+    );
+    return;
+  }
 
-  // Call LLM Proxy
-  const result = await callLlmProxy({ messages });
+  try {
+    const runtime = getFirebaseRuntime();
+    const cfg = runtime.config.loadConfig();
 
-  if (!result.ok) {
-    console.error(`[Firebase] LLM error for ${messageId}:`, result.error);
+    // Resolve user ID and session key
+    const userId = uid || "anonymous";
 
-    if (result.isBillingError) {
+    // Resolve agent route
+    const route = runtime.channel.routing.resolveAgentRoute({
+      cfg,
+      channel: "firebase",
+      accountId: "default",
+    });
+
+    console.log(`[Firebase] Resolved route - agent: ${route.agentId}, session: ${route.sessionKey}`);
+
+    // Build inbound context payload (similar to WhatsApp pattern)
+    const ctx = runtime.channel.reply.finalizeInboundContext({
+      Body: text,
+      RawBody: text,
+      CommandBody: text,
+      From: userId,
+      To: "firebase-assistant",
+      SessionKey: route.sessionKey,
+      AccountId: "default",
+      MessageSid: messageId,
+      Provider: "firebase",
+      Surface: "firebase",
+      OriginatingChannel: "firebase",
+      ChatType: "direct",
+      ConversationLabel: userId,
+    });
+
+    console.log(`[Firebase] Routing message ${messageId} through agent dispatcher`);
+
+    // Collect response blocks
+    let fullResponse = "";
+    let responseMetadata: Record<string, any> = {};
+
+    // Create a reply dispatcher with delivery callbacks
+    const dispatcher = runtime.channel.reply.createReplyDispatcherWithTyping({
+      // Deliver callback - handles each response block
+      deliver: async (payload: ReplyPayload, info: any) => {
+        // Accumulate text blocks
+        if (payload.text) {
+          fullResponse += payload.text;
+        }
+
+        // Log progress
+        if (info.kind === "final") {
+          console.log(`[Firebase] Final block received: ${fullResponse.length} chars`);
+        } else if (info.kind === "tool") {
+          console.log(`[Firebase] Tool block: ${payload.text?.substring(0, 100) || "N/A"}`);
+        }
+      },
+      // Error callback
+      onError: (err: any, info: any) => {
+        const label = info.kind === "tool" ? "tool update" : 
+                     info.kind === "block" ? "block update" : "reply";
+        console.error(`[Firebase] Error delivering ${label}:`, err);
+      },
+    });
+
+    // Dispatch through agent using dispatchReplyFromConfig
+    await runtime.channel.reply.dispatchReplyFromConfig({
+      ctx,
+      cfg,
+      dispatcher: dispatcher.dispatcher,
+      replyOptions: {
+        // Disable block streaming for Firebase (we accumulate and send once)
+        disableBlockStreaming: true,
+        ...dispatcher.replyOptions,
+      },
+    });
+
+    if (!fullResponse || fullResponse.length === 0) {
+      console.log(`[Firebase] No reply generated for ${messageId} (silent token or no content)`);
+      // Don't send error - this might be intentional (e.g., command response)
+      return;
+    }
+
+    console.log(`[Firebase] Agent response complete: ${fullResponse.length} chars`);
+
+    // Send accumulated response back to App Server
+    await sendResponse(messageId, fullResponse, responseMetadata);
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[Firebase] Failed to process message ${messageId}:`, error);
+
+    // Check if it's a billing error
+    if (isBillingError(errorMessage)) {
       await sendBillingErrorResponse(messageId);
     } else {
       await sendErrorResponse(messageId);
     }
-    return;
   }
-
-  console.log(
-    `[Firebase] LLM response for ${messageId}: ${result.content.length} chars`,
-  );
-
-  // Send response back to App Server
-  await sendResponse(messageId, result.content, {
-    model: "claude-haiku-4-5-20251001",
-    tokens: result.usage?.outputTokens,
-  });
 }
 
 /**

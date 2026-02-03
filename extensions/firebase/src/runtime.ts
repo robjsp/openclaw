@@ -1,16 +1,34 @@
 /**
- * Plugin runtime management.
- * Stores the OpenClaw runtime reference for use across the plugin.
+ * Firebase plugin runtime singleton.
+ * Provides access to OpenClaw's runtime services for the Firebase plugin.
  */
 
-import type { RuntimeEnv } from "openclaw/plugin-sdk";
+import type { PluginRuntime } from "openclaw/plugin-sdk";
 
-let runtime: RuntimeEnv | undefined;
+let runtime: PluginRuntime | null = null;
 
-export function setFirebaseRuntime(r: RuntimeEnv): void {
-  runtime = r;
+/**
+ * Set the Firebase plugin runtime.
+ * Called by OpenClaw during plugin initialization.
+ */
+export function setFirebaseRuntime(next: PluginRuntime): void {
+  runtime = next;
 }
 
-export function getFirebaseRuntime(): RuntimeEnv | undefined {
+/**
+ * Get the Firebase plugin runtime.
+ * Throws if runtime has not been initialized.
+ */
+export function getFirebaseRuntime(): PluginRuntime {
+  if (!runtime) {
+    throw new Error("Firebase runtime not initialized - plugin may not be properly loaded");
+  }
   return runtime;
+}
+
+/**
+ * Check if runtime is available.
+ */
+export function hasFirebaseRuntime(): boolean {
+  return runtime !== null;
 }

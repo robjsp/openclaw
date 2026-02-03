@@ -6,7 +6,9 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "build:local": "pnpm clean && tsc --noEmit false",
     "build:standalone": "tsc -p tsconfig.standalone.json",
+    "clean": "rm -rf dist",
     "dev": "tsc --watch",
     "test": "bun test"
   },

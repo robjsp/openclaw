@@ -49,6 +49,7 @@ export const firebasePlugin: ChannelPlugin<FirebaseResolvedAccount> = {
   id: "firebase",
 
   meta: {
+    id: "firebase",
     label: "Firebase",
     selectionLabel: "Firebase (Grio)",
     docsPath: "/channels/firebase",
@@ -57,17 +58,10 @@ export const firebasePlugin: ChannelPlugin<FirebaseResolvedAccount> = {
   },
 
   capabilities: {
-    canReceive: true,
-    canSend: true,
-    canStream: false, // Responses are sent via HTTP callback
-    canGroup: false,
-    canThread: false,
-    canMention: false,
-    canReact: false,
-    canEdit: false,
-    canDelete: false,
-    canUpload: false,
-    canVoice: false,
+    chatTypes: ["direct"], // Firebase only supports direct messages
+    media: false,
+    reactions: false,
+    threads: false,
   },
 
   config: {
@@ -78,7 +72,7 @@ export const firebasePlugin: ChannelPlugin<FirebaseResolvedAccount> = {
 
     resolveAccount: (
       cfg: OpenClawConfig,
-      accountId?: string,
+      accountId?: string | null,
     ): FirebaseResolvedAccount => {
       const firebaseConfig = getFirebaseConfig(cfg);
       const resolved: FirebaseResolvedAccount = {
@@ -171,18 +165,13 @@ export const firebasePlugin: ChannelPlugin<FirebaseResolvedAccount> = {
   },
 
   status: {
-    getAccountStatus: async (
-      ctx: ChannelGatewayContext<FirebaseResolvedAccount>,
-    ): Promise<ChannelAccountSnapshot> => {
-      const { accountId, account } = ctx;
-      const status = ctx.getStatus();
-
+    buildChannelSummary: async ({ account, snapshot }) => {
       return {
-        ...status,
-        accountId,
+        accountId: account.accountId,
         configured: account.configured,
         enabled: account.enabled,
-      } as ChannelAccountSnapshot;
+        running: snapshot.running ?? false,
+      };
     },
   },
 };

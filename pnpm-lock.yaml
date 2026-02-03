@@ -288,6 +288,18 @@ importers:
         specifier: workspace:*
         version: link:../..
 
+  extensions/firebase:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.30
+      openclaw:
+        specifier: workspace:*
+        version: link:../..
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
   extensions/google-antigravity-auth:
     devDependencies:
       openclaw:
