@@ -29,7 +29,7 @@ cat > /root/.openclaw/openclaw.json << CONFIGEOF
       "grio-proxy": {
         "baseUrl": "${LLM_PROXY_URL:-https://grio-proxy.fly.dev}",
         "apiKey": "${LLM_PROXY_API_KEY}",
-        "api": "openai-responses",
+        "api": "${LLM_API_TYPE:-anthropic-messages}",
         "models": [
           {
             "id": "claude-haiku-4-5-20251001",
