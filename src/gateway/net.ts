@@ -153,7 +153,8 @@ export async function resolveGatewayBindHost(
   }
 
   if (mode === "lan") {
-    return "::"; // IPv6 dual-stack (includes IPv4 via IPv4-mapped addresses)
+    return "0.0.0.0";
+    // return "::"; // IPv6 dual-stack (includes IPv4 via IPv4-mapped addresses)
   }
 
   if (mode === "custom") {

@@ -49,12 +49,9 @@ WORKDIR /workspace/openclaw
 # Set up openclaw config directory
 RUN mkdir -p /root/.openclaw
 
-# Use entrypoint script from cloned repo
-RUN cp /workspace/openclaw/openclaw-image/start-gateway.sh /usr/local/bin/start-gateway.sh \
-  && chmod +x /usr/local/bin/start-gateway.sh
-
 # Back to workspace root
 WORKDIR /workspace
 
-# Start gateway on container boot
-CMD ["/usr/local/bin/start-gateway.sh"]
+# Start gateway on container boot (script from cloned repo)
+RUN chmod +x /workspace/openclaw/openclaw-image/start-gateway.sh
+CMD ["/workspace/openclaw/openclaw-image/start-gateway.sh"]
