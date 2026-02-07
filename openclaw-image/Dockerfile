@@ -25,19 +25,17 @@ RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
 RUN npm install -g pnpm
 
 # Create workspace directory
+WORKDIR /workspace
+
+# Cache busting argument for forcing fresh git clone
+ARG CACHEBUST=1
+
+# Clone openclaw from GitHub
+RUN git clone --depth 1 https://github.com/robjsp/openclaw.git /workspace/openclaw
+
+# Install dependencies and build
 WORKDIR /workspace/openclaw
-
-# Copy package files for dependency installation
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY extensions/firebase/package.json ./extensions/firebase/
-
-# Install dependencies
 RUN pnpm install --frozen-lockfile || pnpm install
-
-# Copy source code
-COPY . .
-
-# Build openclaw
 RUN pnpm build || true
 
 # Build Firebase plugin extension
@@ -45,12 +43,15 @@ WORKDIR /workspace/openclaw/extensions/firebase
 RUN pnpm build:local || echo "Firebase plugin build failed, but continuing..."
 WORKDIR /workspace/openclaw
 
+# Install openclaw globally
+# RUN npm install -g openclaw@latest
+
 # Set up openclaw config directory
 RUN mkdir -p /root/.openclaw
 
-# Copy entrypoint script
-COPY openclaw-image/start-gateway.sh /usr/local/bin/start-gateway.sh
-RUN chmod +x /usr/local/bin/start-gateway.sh
+# Use entrypoint script from cloned repo
+RUN cp /workspace/openclaw/openclaw-image/start-gateway.sh /usr/local/bin/start-gateway.sh \
+  && chmod +x /usr/local/bin/start-gateway.sh
 
 # Back to workspace root
 WORKDIR /workspace
