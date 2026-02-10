@@ -4,38 +4,15 @@ set -e
 echo "Starting OpenClaw Gateway..."
 
 # ---------------------------------------------------------------------------
-# VIO runtime-aware env var helper
+# Static configuration for sidecar-based deployment.
 #
-# In Firecracker mode, per-clone env vars are injected via MMDS and must be
-# read from http://169.254.169.254/env/KEY_NAME.
-# In Docker mode (or outside VIO), they're standard shell env vars.
-#
-# This helper tries MMDS first, then falls back to printenv.
+# All external communication goes through the sidecar proxy on localhost:4000.
+# The sidecar reads real per-clone values from MMDS after snapshot restore.
+# OpenClaw never needs to know about MMDS or per-clone credentials.
 # ---------------------------------------------------------------------------
-vio_env() {
-  curl -sf "http://169.254.169.254/env/$1" 2>/dev/null || printenv "$1" 2>/dev/null || echo ""
-}
 
-echo "Runtime: ${VIO_RUNTIME:-unknown}"
-echo "Resolving environment variables..."
+FIXED_INTERNAL_SECRET="grio-internal-fixed-token"
 
-# Resolve all required env vars (works in both Firecracker and Docker)
-RESOLVED_VM_INTERNAL_SECRET=$(vio_env VM_INTERNAL_SECRET)
-RESOLVED_LLM_PROXY_URL=$(vio_env LLM_PROXY_URL)
-RESOLVED_LLM_PROXY_API_KEY=$(vio_env LLM_PROXY_API_KEY)
-RESOLVED_LLM_API_TYPE=$(vio_env LLM_API_TYPE)
-RESOLVED_APP_SERVER_URL=$(vio_env APP_SERVER_URL)
-
-# Apply defaults
-RESOLVED_LLM_PROXY_URL="${RESOLVED_LLM_PROXY_URL:-https://grio-proxy.fly.dev}"
-RESOLVED_LLM_API_TYPE="${RESOLVED_LLM_API_TYPE:-anthropic-messages}"
-
-echo "  LLM_PROXY_URL: $RESOLVED_LLM_PROXY_URL"
-echo "  LLM_API_TYPE: $RESOLVED_LLM_API_TYPE"
-echo "  APP_SERVER_URL: $RESOLVED_APP_SERVER_URL"
-echo "  VM_INTERNAL_SECRET: ${RESOLVED_VM_INTERNAL_SECRET:+[set]}"
-
-# Generate openclaw.json
 echo "Generating configuration..."
 
 cat > /root/.openclaw/openclaw.json << CONFIGEOF
@@ -45,7 +22,7 @@ cat > /root/.openclaw/openclaw.json << CONFIGEOF
     "port": 3000,
     "bind": "lan",
     "auth": {
-      "token": "${RESOLVED_VM_INTERNAL_SECRET}"
+      "token": "${FIXED_INTERNAL_SECRET}"
     }
   },
   "agents": {
@@ -60,9 +37,9 @@ cat > /root/.openclaw/openclaw.json << CONFIGEOF
     "mode": "replace",
     "providers": {
       "grio-proxy": {
-        "baseUrl": "${RESOLVED_LLM_PROXY_URL}",
-        "apiKey": "${RESOLVED_LLM_PROXY_API_KEY}",
-        "api": "${RESOLVED_LLM_API_TYPE}",
+        "baseUrl": "http://localhost:4000",
+        "apiKey": "sidecar-will-replace",
+        "api": "anthropic-messages",
         "models": [
           {
             "id": "claude-haiku-4-5-20251001",
@@ -96,6 +73,17 @@ cat > /root/.openclaw/openclaw.json << CONFIGEOF
 CONFIGEOF
 
 echo "Configuration generated at /root/.openclaw/openclaw.json"
+
+# Export fixed env vars for the Firebase plugin.
+# These are static — the sidecar handles swapping to real values on outbound.
+export VM_INTERNAL_SECRET="${FIXED_INTERNAL_SECRET}"
+export APP_SERVER_URL="http://localhost:4000"
+export LLM_PROXY_URL="http://localhost:4000"
+export LLM_PROXY_API_KEY="sidecar-will-replace"
+
+echo "  LLM_PROXY_URL: $LLM_PROXY_URL (via sidecar)"
+echo "  APP_SERVER_URL: $APP_SERVER_URL (via sidecar)"
+echo "  VM_INTERNAL_SECRET: [fixed]"
 echo "Starting gateway process..."
 
 # Start gateway
